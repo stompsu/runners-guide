@@ -6,7 +6,7 @@ Runners Diary is a private, multi-user running diary for planning and tracking r
 
 ## Repository status and proposed layout
 
-The repository currently contains the M1 skeleton plus project documentation and customization files. The remaining directories in this layout are proposed for later milestones.
+The repository currently contains the M1 Aspire skeleton, M2 domain and Runs API, and M3 calendar UI. Maps/GPX, insights, AI, and deployment features remain for later milestones.
 
 ```text
 .github/
@@ -26,6 +26,8 @@ src/
   RunnersDiary.ServiceDefaults/
 web/
   src/
+    auth/
+    diary/
     api/
       generated/
 infra/
