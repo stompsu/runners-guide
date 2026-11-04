@@ -30,6 +30,7 @@ Requirements: .NET 10 SDK and Node.js 22.13 or Node.js 24 LTS available on `PATH
 3. Apply the checked-in EF migration to the isolated, non-production SQL database:
 
    ```powershell
+   dotnet tool restore
    dotnet ef database update --project src\RunnersDiary.Infrastructure --startup-project src\RunnersDiary.Api
    ```
 
@@ -50,6 +51,7 @@ When hosting behind a reverse proxy, configure `Networking:ForwardedHeaders:Know
 ## Build and test
 
 ```powershell
+dotnet tool restore
 dotnet restore RunnersDiary.sln
 dotnet build RunnersDiary.sln --no-restore
 dotnet test RunnersDiary.sln --no-build
