@@ -156,9 +156,11 @@ public sealed class RunApiTests
         return (await response.Content.ReadFromJsonAsync<GuestSessionResponse>())!;
     }
 
-    private sealed class DiaryApiFactory : WebApplicationFactory<Program>
+    internal sealed class DiaryApiFactory : WebApplicationFactory<Program>
     {
         private readonly string _databaseName = Guid.NewGuid().ToString("N");
+        public MemoryTrackStorage Storage { get; } = new();
+        public FailingSaveInterceptor Saves { get; } = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -166,6 +168,9 @@ public sealed class RunApiTests
             builder.ConfigureAppConfiguration((_, configuration) =>
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
+                    ["Azure:Sql:Server"] = null,
+                    ["Azure:Sql:Database"] = null,
+                    ["Azure:Storage:BlobServiceUri"] = null,
                     ["Auth:Guest:Issuer"] = "runners-diary-test-guest",
                     ["Auth:Guest:Audience"] = "runners-diary-test-api",
                     ["Auth:Guest:SigningKey"] = Convert.ToBase64String(Enumerable.Range(1, 32).Select(value => (byte)value).ToArray())
@@ -175,7 +180,9 @@ public sealed class RunApiTests
                 services.RemoveAll<DiaryDbContext>();
                 services.RemoveAll<DbContextOptions<DiaryDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<DiaryDbContext>>();
-                services.AddDbContext<DiaryDbContext>(options => options.UseInMemoryDatabase(_databaseName));
+                services.AddDbContext<DiaryDbContext>(options => options.UseInMemoryDatabase(_databaseName).AddInterceptors(Saves));
+                services.RemoveAll<ITrackStorage>();
+                services.AddSingleton<ITrackStorage>(Storage);
             });
         }
 

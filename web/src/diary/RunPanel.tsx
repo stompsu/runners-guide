@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { TrackPanel } from '../maps/TrackPanel'
 import { Modal } from '../components/Modal'
 import { en } from '../i18n'
 import { dateLabel, duration, km, utcDate } from './calendar'
@@ -64,7 +65,7 @@ export function RunPanel({ runs, date, label, initialAdd = false, onClose, onCha
           }}>{mutation.isPending ? en.panel.deleting : en.panel.confirm}</button>
         </div>
       </> : mode === 'details' ? <>
-        {run ? <><Details run={run} /><button onClick={() => setMode('form')}>{en.edit}</button></>
+        {run ? <><Details run={run} /><TrackPanel runId={run.id} completed={run.status === 'Completed'} /><button onClick={() => setMode('form')}>{en.edit}</button></>
           : <p role="status">{en.panel.missing}</p>}
         <button onClick={() => setMode('list')}>{en.panel.back}</button>
       </> : <>

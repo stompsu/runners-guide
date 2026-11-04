@@ -22,7 +22,8 @@ public sealed class BearerSecuritySchemeTransformer : IOpenApiDocumentTransforme
 
         foreach (var (path, pathItem) in document.Paths)
         {
-            if (!path.StartsWith("/api/runs", StringComparison.Ordinal))
+            if (!path.StartsWith("/api/runs", StringComparison.Ordinal)
+                && !path.StartsWith("/api/maps", StringComparison.Ordinal))
             {
                 continue;
             }

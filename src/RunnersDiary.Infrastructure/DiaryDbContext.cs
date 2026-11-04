@@ -80,6 +80,7 @@ public sealed class DiaryDbContext(DbContextOptions<DiaryDbContext> options) : D
         {
             entity.HasKey(track => track.RunId);
             entity.Property(track => track.BlobName).HasMaxLength(1024).IsRequired();
+            entity.Property(track => track.ProcessedBlobName).HasMaxLength(1024);
             entity.HasOne<Run>()
                 .WithOne(run => run.GpxTrack)
                 .HasForeignKey<GpxTrack>(track => track.RunId)

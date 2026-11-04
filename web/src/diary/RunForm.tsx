@@ -1,4 +1,8 @@
 import { useForm, useWatch } from 'react-hook-form'
+import { useState } from 'react'
+import { LocationPicker } from '../maps/LocationPicker'
+import { TrackPanel } from '../maps/TrackPanel'
+import type { Location } from '../maps/contracts'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { en } from '../i18n'
@@ -59,7 +63,10 @@ export function RunForm({ date, run, onSaved, onCancel }: {
   date: string; run?: Run; onSaved: () => void; onCancel: () => void
 }) {
   const mutation = useRunMutation()
-  const { register, handleSubmit, control, formState: { errors } } = useForm<FormValues>({
+  const [location, setLocation] = useState<Location | null>(run?.location ? {
+    displayName: run.location.displayName, latitude: Number(run.location.latitude), longitude: Number(run.location.longitude),
+  } : null)
+  const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       date: run?.startAtUtc.slice(0, 10) ?? date, time: run?.startAtUtc.slice(11, 19) ?? '08:00',
@@ -101,7 +108,7 @@ export function RunForm({ date, run, onSaved, onCancel }: {
       averageHeartRateBpm: numeric(value.average), maximumHeartRateBpm: numeric(value.maximum),
       perceivedEffort: numeric(value.effort), shoesOrGear: value.gear || null,
       weather: value.weather || null, surface: value.surface || null,
-      location: run?.location ?? null,
+      location,
       raceDetails: typeGroup(value.runTypeCode) === 'race' ? {
         raceName: value.raceName || null, officialDistanceCategory: value.category || null,
         bibNumber: value.bib || null, targetTimeSeconds: value.target ? Math.round(Number(value.target) * 60) : null,
@@ -118,6 +125,14 @@ export function RunForm({ date, run, onSaved, onCancel }: {
     } catch { /* The mutation error is rendered below. */ }
   }
   return <form onSubmit={handleSubmit(submit)} noValidate>
+    <LocationPicker value={location} onChange={setLocation} />
+    {run ? <TrackPanel runId={run.id} completed={status === 'Completed'} onApply={metrics => {
+      setValue('distance', String(metrics.distanceMeters / 1000), { shouldDirty: true })
+      if (metrics.durationSeconds != null) setValue('minutes', String(Number(metrics.durationSeconds) / 60), { shouldDirty: true })
+      setValue('gain', String(metrics.elevationGainMeters), { shouldDirty: true })
+      setValue('loss', String(metrics.elevationLossMeters), { shouldDirty: true })
+      setLocation({ displayName: en.maps.start, latitude: metrics.startLatitude, longitude: metrics.startLongitude })
+    }} /> : <p>{en.maps.saveFirst}</p>}
     <fieldset disabled={mutation.isPending} className="form-grid">
       <legend className="sr-only">{en.form.legend}</legend>
       {field('title', 'text', { maxLength: 200 })}

@@ -21,6 +21,7 @@ vi.mock('./auth/entra', () => ({
   get entraClient() { return entra.configured ? entra.instance : undefined },
   apiScope: 'api://test/diary',
 }))
+vi.mock('./maps/MapView', () => ({ MapView: () => <div aria-label="Run map" /> }))
 vi.mock('@azure/msal-react', () => ({
   useMsal: () => {
     if (!entra.configured) throw new Error('MsalProvider is required')
@@ -66,6 +67,7 @@ beforeEach(() => {
   fetchMock.mockReset()
   fetchMock.mockImplementation(async (request: Request) => {
     const url = new URL(request.url)
+    if (url.pathname.endsWith('/track')) return new Response(null, { status: 404 })
     if (url.pathname === '/api/auth/guest') return guestStatus === 200
       ? json({ accessToken: 'memory-only-demo', expiresAtUtc: new Date(Date.now() + 86400000).toISOString() })
       : new Response(null, { status: guestStatus })
@@ -357,6 +359,7 @@ describe('M3 calendar and session', () => {
     await user.click(screen.getByRole('button', { name: 'Try as guest' }))
     expect(await screen.findByRole('grid')).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByRole('button', { name: 'Add run' })).toBeDisabled()
+    await waitFor(() => expect(resolveList).toBeTypeOf('function'))
     await act(async () => resolveList(json([])))
     await waitFor(() => expect(screen.getByRole('grid')).toHaveAttribute('aria-busy', 'false'))
     await user.click(screen.getByRole('button', { name: 'November 2026' }))

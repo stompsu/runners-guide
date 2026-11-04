@@ -33,7 +33,10 @@ public static class DependencyInjection
             options.UseSqlServer(sqlConnection, sql => sql.UseNetTopologySuite()));
         services.AddSingleton<TimeProvider>(TimeProvider.System);
         services.AddScoped<DemoDataSeeder>();
+        services.AddScoped<ITrackStorage>(provider => new TrackStorage(
+            provider.GetRequiredService<BlobServiceClient>(), configuration));
         services.AddScoped<ExpiredGuestCleanupService>();
+        services.AddScoped<TrackDeletionService>();
 
         var blobServiceUri = configuration["Azure:Storage:BlobServiceUri"];
         if (Uri.TryCreate(blobServiceUri, UriKind.Absolute, out var serviceUri)
