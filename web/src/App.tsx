@@ -1,72 +1,96 @@
-import { Link, Route, Routes } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useMsal } from '@azure/msal-react'
+import type { AuthenticationResult, IPublicClientApplication } from '@azure/msal-browser'
+import { SessionProvider, Protected, useSession } from './auth/Session'
+import { apiScope, entraClient } from './auth/entra'
+import { DiaryPage } from './diary/DiaryPage'
+import { monthPath } from './diary/calendar'
+import { en } from './i18n'
 import './App.css'
 
-function HomePage() {
-  return (
-    <main className="page-content">
-      <p className="eyebrow">Your training, thoughtfully tracked</p>
-      <h1>A clearer view of your running journey.</h1>
-      <p className="intro">
-        Plan your runs, keep your race history, and make sense of your training
-        over time.
-      </p>
-      <Link className="primary-link" to="/sign-in">
-        Sign in
-      </Link>
-      <p className="milestone-note">
-        The diary and guest demo will be available in upcoming milestones.
-      </p>
-    </main>
-  )
+function EntraSignInButton({ pending, onPendingChange, onBegin, onSuccess, onFailure }: {
+  pending: boolean
+  onPendingChange: (pending: boolean) => void
+  onBegin: () => void
+  onSuccess: (result: AuthenticationResult, instance: IPublicClientApplication) => void
+  onFailure: () => void
+}) {
+  const { instance } = useMsal()
+  async function signIn() {
+    onPendingChange(true)
+    onBegin()
+    try {
+      onSuccess(await instance.loginPopup({ scopes: [apiScope!] }), instance)
+    } catch {
+      onFailure()
+    } finally { onPendingChange(false) }
+  }
+  return <button className="primary" disabled={pending} onClick={() => void signIn()}>{en.signIn}</button>
 }
 
 function SignInPage() {
-  return (
-    <main className="page-content">
-      <p className="eyebrow">Welcome back</p>
-      <h1>Sign in to Runners Diary</h1>
-      <p className="intro">
-        Account sign-in and guest demo access are coming in the next milestone.
-      </p>
-      <Link className="secondary-link" to="/">
-        Back to home
-      </Link>
-    </main>
-  )
+  const auth = useSession()
+  const location = useLocation()
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState('')
+  const [currentMonth] = useState(() => monthPath(new Date()))
+  const from = location.state?.from
+  const destination = typeof from === 'string' && /^\/diary\/\d{4}\/\d{2}$/.test(from)
+    ? from : currentMonth
+  if (auth.session) return <Navigate to={destination} replace />
+  async function signInAsGuest() {
+    setPending(true)
+    setError('')
+    try {
+      await auth.guest()
+    } catch {
+      setError(en.auth.guestFailed)
+    } finally { setPending(false) }
+  }
+  return <main className="page-content">
+    <p className="eyebrow">{en.auth.eyebrow}</p>
+    <h1>{en.auth.heading}</h1>
+    <p className="intro">{en.auth.intro}</p>
+    {auth.expired && <p role="alert">{en.expired}</p>}
+    {error && <p role="alert">{error}</p>}
+    <div className="toolbar">
+      {entraClient
+        ? <EntraSignInButton pending={pending} onPendingChange={setPending} onBegin={() => setError('')}
+            onSuccess={auth.signIn} onFailure={() => setError(en.auth.failed)} />
+        : <button className="primary" disabled>{en.signIn}</button>}
+      <button disabled={pending} onClick={() => void signInAsGuest()}>{pending ? en.auth.wait : en.guest}</button>
+    </div>
+    {!entraClient && <p className="muted">{en.auth.unconfigured}</p>}
+  </main>
 }
 
-function NotFoundPage() {
-  return (
-    <main className="page-content">
-      <p className="eyebrow">Page not found</p>
-      <h1>That route is not part of the diary yet.</h1>
-      <Link className="secondary-link" to="/">
-        Back to home
+function Shell() {
+  const { session, signOut } = useSession()
+  const [currentMonth] = useState(() => monthPath(new Date()))
+  return <div className="app-shell">
+    <header className="site-header">
+      <Link aria-label={en.auth.home} className="brand" to={session ? '/diary' : '/sign-in'}>
+        <span aria-hidden="true" className="brand-mark">R</span><span>{en.auth.brand}</span>
       </Link>
-    </main>
-  )
+      <nav aria-label={en.auth.navigation}>
+        {session ? <button onClick={signOut}>{en.auth.signOut}</button> : <Link to="/sign-in">{en.signIn}</Link>}
+      </nav>
+    </header>
+    {session?.kind === 'guest' && <aside className="demo-banner" aria-label="Demo mode">
+      {en.demo} <button onClick={signOut}>{en.signIn}</button>
+    </aside>}
+    <Routes>
+      <Route path="/" element={<Navigate to={session ? '/diary' : '/sign-in'} replace />} />
+      <Route path="/sign-in" element={<SignInPage />} />
+      <Route path="/diary" element={<Protected><Navigate to={currentMonth} replace /></Protected>} />
+      <Route path="/diary/:year/:month" element={<Protected><DiaryPage /></Protected>} />
+      <Route path="*" element={<main className="page-content"><h1>{en.auth.notFound}</h1><Link to="/">{en.auth.back}</Link></main>} />
+    </Routes>
+    <footer className="site-footer">{en.auth.footer}</footer>
+  </div>
 }
 
 export default function App() {
-  return (
-    <div className="app-shell">
-      <header className="site-header">
-        <Link aria-label="Runners Diary home" className="brand" to="/">
-          <span aria-hidden="true" className="brand-mark">R</span>
-          <span>Runners Diary</span>
-        </Link>
-        <nav aria-label="Main navigation">
-          <Link to="/sign-in">Sign in</Link>
-        </nav>
-      </header>
-      <Routes>
-        <Route element={<HomePage />} path="/" />
-        <Route element={<SignInPage />} path="/sign-in" />
-        <Route element={<NotFoundPage />} path="*" />
-      </Routes>
-      <footer className="site-footer">
-        A private space for your running life.
-      </footer>
-    </div>
-  )
+  return <SessionProvider><Shell /></SessionProvider>
 }

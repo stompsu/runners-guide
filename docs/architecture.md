@@ -29,3 +29,15 @@ Status: implemented; database migrations must be applied explicitly to an isolat
 - The development OpenAPI document describes bearer security for the run endpoints. The typed frontend client supports attaching the current access token but does not implement sign-in; UI auth is M3.
 
 See [ADR 0002](adr/0002-domain-runs-auth-and-demo.md).
+
+## M3 — Calendar UI
+
+Status: implemented; live Entra/API verification requires the configured development environment.
+
+- React Router protects `/diary` and `/diary/YYYY/MM`; unauthenticated bookmarks return to their month after sign-in. The public sign-in page offers MSAL popup sign-in and `POST /api/auth/guest`. Vite public SPA identifiers configure Entra, with a dedicated MSAL 5 `/auth-callback.html` redirect-bridge entry.
+- Guest tokens, Entra token cache, app session, and TanStack Query data stay in memory. Guest expiry, silent-token interaction failures, and API 401 responses clear the session/cache. Sign-out also clears MSAL's memory cache. MSAL may use session storage for temporary protocol metadata, not the app's guest token.
+- The existing `openapi-fetch` client is the sole backend transport. Generated M2 schemas supply all run/session contracts; only the stable seeded run-type lookup is maintained locally because M2 has no catalog endpoint.
+- UTC calendar dates drive Monday-first grids, ISO week-years, inclusive full-week queries, and completed-only totals. Cross-training/rest do not contribute running distance. Bubbles use type colors, explicit status text, filled/dashed borders, and race markers.
+- Radix Dialog plus existing CSS is the lightweight component alternative to shadcn/Tailwind. Panels trap focus, restore the opener, and close with Escape. The grid has row/column semantics, roving day focus, arrow/Home/End/Page navigation, and a horizontally scrollable narrow-screen layout.
+- React Hook Form/Zod validate add/edit forms and map metric display units into generated SI inputs. Race metadata is editable; existing location coordinates are preserved without adding map/geocoding controls. Ratings/comments are submitted only for completed runs.
+- English strings and Intl formatting are organized under `web/src/i18n.ts`; maps, GPX, and insights remain out of scope.
