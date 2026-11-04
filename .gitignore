@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+.vs/
+.idea/
+.env
+.env.*
+!.env.example
+*.user
+*.suo
+TestResults/
