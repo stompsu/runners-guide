@@ -60,7 +60,7 @@ Strava/Garmin sync, FIT/TCX import, training plan generator, social features, mo
 |---|---|
 | Frontend | React + TypeScript + Vite, React Router, TanStack Query, a component library (shadcn/ui + Tailwind, or propose alternative), Recharts for charts, react-hook-form + zod |
 | Backend | .NET 10, ASP.NET Core Minimal APIs, vertical-slice organization, EF Core, FluentValidation (or built-in validation), OpenAPI document → generated TypeScript client for the frontend |
-| Local dev orchestration | .NET Aspire (AppHost runs API, frontend, DB, Azurite) |
+| Local dev orchestration | .NET Aspire AppHost runs the API and frontend; Azure development resources are external dependencies (no local Docker/container requirement) |
 | Database | **Azure SQL Database (serverless, free offer)** via EF Core — runs, race details, ratings, aggregates. Use a `geography` point for location. Justify if you think PostgreSQL Flexible Server or Cosmos DB is a better fit, but trend/aggregate queries favor relational. |
 | File storage | Azure Blob Storage: raw GPX (private container) + processed, simplified track as GeoJSON (for fast map rendering) |
 | GPX processing | Parse server-side in C# (e.g. a GPX library or `XmlReader` with strict settings — no DTD/external entities), compute distance (haversine), elevation gain with smoothing, duration, splits; simplify geometry (Douglas–Peucker) for display |
@@ -71,9 +71,17 @@ Strava/Garmin sync, FIT/TCX import, training plan generator, social features, mo
 | Secrets & config | Azure Key Vault + Container Apps secrets references; no secrets in repo |
 | Observability | Application Insights + Log Analytics via OpenTelemetry |
 | IaC & deploy | Bicep + Azure Developer CLI (`azd`), GitHub Actions with OIDC federated credentials |
-| Testing | xUnit + Testcontainers (SQL) for API, Vitest + React Testing Library for UI, Playwright for E2E on the key flows |
+| Testing | xUnit unit tests and API integration tests against a dedicated Azure SQL development/test database (no local Docker requirement), Vitest + React Testing Library for UI, Playwright for E2E on the key flows |
 
 Code conventions: C# for all backend code and examples; nullable reference types on; `TreatWarningsAsErrors`; analyzers enabled; TypeScript `strict`. Keep the domain logic (load calculation, GPX metrics) in a pure, unit-tested library with no infrastructure dependencies.
+
+### Local development setup
+
+- Run the API and frontend on the developer machine with .NET Aspire; Aspire does not start local database or storage containers.
+- Use a separate, non-production Azure development environment for the dependencies needed by the current milestone: Azure SQL Database and Blob Storage, plus Azure Maps and Microsoft Foundry when those features are being developed. Configure Entra External ID for local sign-in when authentication is introduced.
+- Authenticate from local development with the developer's Entra identity (for example, `DefaultAzureCredential`) and grant it only the roles needed on the development resources. Do not copy production credentials or commit secrets. Keep local settings such as the Azure resource names and endpoints out of source control.
+- Keep integration-test data isolated from development data by using a dedicated test database or equivalent isolated test resource. Tests must not clear or mutate shared development data.
+- Provisioning and changing Azure resources still requires explicit approval; the ability to use Azure resources locally does not authorize an agent to deploy or modify them.
 
 ## 3. Phase 0 — Agents & project memory (do this first)
 
@@ -99,7 +107,7 @@ Also in Phase 0:
 
 Before each milestone, have **architect** produce a short plan (files to touch, contracts, risks). After each milestone, have **qa-tester** run all tests and **reviewer** review the diff, then stop for my approval. Commit per milestone with a clear message.
 
-- **M1 – Skeleton**: solution + Aspire AppHost, API with health endpoint, React app shell with routing, generated API client, local SQL + Azurite, CI building and testing both apps. Acceptance: `dotnet run` on AppHost brings everything up; CI green.
+- **M1 – Skeleton**: solution + Aspire AppHost, API with health endpoint, React app shell with routing, generated API client, configuration for the separately provisioned Azure development resources, CI building and testing both apps. Acceptance: `dotnet run` on AppHost starts the API and frontend and the API can connect to the configured Azure development resources; no local containers are required; CI green.
 - **M2 – Domain & Runs API**: data model (User, Run, RunType, RaceDetails, Rating, GpxTrack, Location), migrations, seeded run types, CRUD endpoints with per-user authorization, query endpoint by date range. Auth wired: Entra External ID for real users **plus guest access** (guest token endpoint, `DemoDataSeeder`, demo dataset in `seed/demo/`, 24 h expiry cleanup, rate limits). Acceptance: no endpoint answers without a valid token; two guests never see each other's data; a fresh guest sees a populated calendar for the current month.
 - **M3 – Calendar UI**: sign-in page with "Sign in" and "Try as guest", demo-mode banner, month grid with bubbles, week totals, month/year navigation, day/month list panel, add/edit/delete flows, planned vs completed, rating after completion.
 - **M4 – Maps & GPX**: location picker + geocoding, GPX upload (planned course or recorded track), server-side parsing & metrics, auto-fill, map track display, elevation profile, secure token flow for Azure Maps.
