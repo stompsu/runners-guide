@@ -1,0 +1,18 @@
+{
+  "weeklySchedule": [
+    { "weekday": 1, "runTypeCodes": ["recovery-run", "cross-training", "treadmill-run"], "title": "Easy recovery miles", "distanceMeters": 6000, "durationSeconds": 2280, "perceivedEffort": 3 },
+    { "weekday": 2, "runTypeCodes": ["tempo-threshold", "intervals", "hill-repeats", "fartlek", "progression-run", "race-pace-run"], "title": "Quality training session", "distanceMeters": 9000, "durationSeconds": 3120, "perceivedEffort": 7 },
+    { "weekday": 4, "runTypeCodes": ["easy-run", "strides-drills", "trail-training"], "title": "Easy neighborhood run", "distanceMeters": 7500, "durationSeconds": 2850, "perceivedEffort": 4 },
+    { "weekday": 6, "runTypeCodes": ["long-run"], "title": "Weekend long run", "distanceMeters": 16000, "durationSeconds": 6000, "perceivedEffort": 5 }
+  ],
+  "completedRaces": [
+    { "daysAgo": 45, "runTypeCode": "road-race", "title": "City 10K", "raceName": "Gliwice City Run", "distanceCategory": "10K", "distanceMeters": 10000, "durationSeconds": 2820, "perceivedEffort": 9, "stars": 5, "comment": "A strong finish and a great atmosphere." },
+    { "daysAgo": 93, "runTypeCode": "trail-race", "title": "Forest trail race", "raceName": "Silesian Forest Trail", "distanceCategory": "Trail 15K", "distanceMeters": 15000, "durationSeconds": 5700, "perceivedEffort": 9, "stars": 4, "comment": "Technical course with a rewarding climb." },
+    { "daysAgo": 135, "runTypeCode": "road-race", "title": "Summer half marathon", "raceName": "Upper Silesia Half Marathon", "distanceCategory": "Half marathon", "distanceMeters": 21097.5, "durationSeconds": 8100, "perceivedEffort": 8, "stars": 5, "comment": "Even pacing made the final kilometers feel strong." },
+    { "daysAgo": 170, "runTypeCode": "cross-country", "title": "Park cross-country", "raceName": "Gliwice Park Cross", "distanceCategory": "Cross-country 6K", "distanceMeters": 6000, "durationSeconds": 1740, "perceivedEffort": 8, "stars": 4, "comment": "A fun change from road training." }
+  ],
+  "plannedRaces": [
+    { "daysAhead": 21, "runTypeCode": "road-race", "title": "Autumn 10K", "raceName": "Silesia Autumn 10K", "distanceCategory": "10K", "distanceMeters": 10000 },
+    { "daysAhead": 49, "runTypeCode": "trail-race", "title": "Winter trail event", "raceName": "Winter Forest Run", "distanceCategory": "Trail 12K", "distanceMeters": 12000 }
+  ]
+}
