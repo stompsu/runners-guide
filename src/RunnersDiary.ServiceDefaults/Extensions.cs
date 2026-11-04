@@ -110,7 +110,7 @@ public static class Extensions
     {
         if (app.Environment.IsDevelopment())
         {
-            app.MapHealthChecks(ReadinessEndpointPath);
+            app.MapHealthChecks(ReadinessEndpointPath).AllowAnonymous();
         }
 
         return app;

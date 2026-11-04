@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <PackageReference Include="Azure.Identity">
       <Version>1.21.0</Version>
@@ -18,12 +19,18 @@
     <PackageReference Include="Microsoft.Data.SqlClient">
       <Version>7.1.1</Version>
     </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <!-- Pin the Azure.Identity transitive Pkcs dependency to its patched 9.x release. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\RunnersDiary.ServiceDefaults\RunnersDiary.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\RunnersDiary.Infrastructure\RunnersDiary.Infrastructure.csproj" />
+    <ProjectReference Include="..\RunnersDiary.Domain\RunnersDiary.Domain.csproj" />
   </ItemGroup>
 
 </Project>

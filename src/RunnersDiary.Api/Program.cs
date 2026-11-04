@@ -1,28 +1,102 @@
 using Azure.Identity;
+using System.Net;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
+using RunnersDiary.Api.Authentication;
+using RunnersDiary.Api.Endpoints;
+using RunnersDiary.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddProblemDetails();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = builder.Configuration.GetValue<int?>("Networking:ForwardedHeaders:ForwardLimit") ?? 1;
+    if (options.ForwardLimit <= 0)
+    {
+        throw new InvalidOperationException("Networking:ForwardedHeaders:ForwardLimit must be greater than zero.");
+    }
+
+    foreach (var value in builder.Configuration.GetSection("Networking:ForwardedHeaders:KnownProxies").Get<string[]>() ?? [])
+    {
+        if (!IPAddress.TryParse(value, out var address))
+        {
+            throw new InvalidOperationException($"Configured forwarded-header proxy address '{value}' is invalid.");
+        }
+
+        options.KnownProxies.Add(address);
+    }
+
+    foreach (var value in builder.Configuration.GetSection("Networking:ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [])
+    {
+        if (!System.Net.IPNetwork.TryParse(value, out var network))
+        {
+            throw new InvalidOperationException($"Configured forwarded-header proxy network '{value}' is invalid.");
+        }
+
+        options.KnownIPNetworks.Add(network);
+    }
+});
 builder.Services.AddSingleton<DefaultAzureCredential>();
+var guestTokenSettings = GuestTokenSettings.Load(builder.Configuration, builder.Environment);
+if (!builder.Environment.IsDevelopment()
+    && (string.IsNullOrWhiteSpace(builder.Configuration["Auth:Entra:Authority"])
+        || string.IsNullOrWhiteSpace(builder.Configuration["Auth:Entra:Audience"])))
+{
+    throw new InvalidOperationException("Auth:Entra:Authority and Auth:Entra:Audience are required outside Development.");
+}
+
+builder.Services.AddSingleton(guestTokenSettings);
+builder.Services.AddSingleton<GuestTokenService>();
+builder.Services.AddDiaryAuthentication(builder.Configuration, guestTokenSettings);
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("guest-bootstrap", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
+builder.Services.AddDiaryInfrastructure(builder.Configuration);
 builder.Services.AddHealthChecks()
     .AddCheck<AzureResourcesHealthCheck>("azure-resources");
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
+app.UseForwardedHeaders();
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
     app.MapGet("/health/live", () => TypedResults.Ok(new LivenessResponse("Healthy")))
+        .AllowAnonymous()
         .WithName("GetLiveness")
         .WithTags("Infrastructure")
         .WithDescription("Local infrastructure probe only; returns no user data or diagnostic details.");
     app.MapDefaultEndpoints();
 }
 
+app.MapGuestEndpoints();
+app.MapRunEndpoints();
+app.MapFallback("{*path}", () => Results.NotFound()).AllowAnonymous();
 app.Run();
 
 public partial class Program { }

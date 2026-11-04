@@ -7,10 +7,9 @@ import openapiTS, { astToString } from 'openapi-typescript'
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(scriptDirectory, '../..')
-const apiAssembly = resolve(
-  repositoryRoot,
-  'src/RunnersDiary.Api/bin/Debug/net10.0/RunnersDiary.Api.dll',
-)
+const apiAssembly = process.env.API_ASSEMBLY_PATH
+  ? resolve(process.env.API_ASSEMBLY_PATH)
+  : resolve(repositoryRoot, 'src/RunnersDiary.Api/bin/Debug/net10.0/RunnersDiary.Api.dll')
 const outputFile = resolve(
   scriptDirectory,
   '../src/api/generated/openapi.d.ts',
