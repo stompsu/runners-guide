@@ -1,5 +1,75 @@
 # Architecture
 
+## M5.1/M5.2 — deterministic insights backend
+
+Status: implemented and locally verified; live SQL execution/performance checks
+remain environment-dependent. No new migrations, cloud changes, AI/M6 work, or
+frontend/generated TypeScript changes are part of this slice.
+
+- Pure `Domain/Insights/InsightsCalculator` owns all numerical rules. The
+  authenticated Insights API captures UTC time once, validates inclusive ranges
+  (maximum 367 days), and applies current-user/guest expiry, owner, completed,
+  and M4 parent-delete-intent filters before scalar projection.
+- Two no-tracking insights queries supply bounded measurement rows and the
+  earliest completed non-rest timestamp. UTC day/type grouping happens in pure
+  code, shared across all charts; no entity graphs or per-chart N+1 queries.
+  Track-only pending deletion remains visible.
+- `GET /api/insights?from=…&to=…&bucket=week|month` returns selected, daily,
+  explicit empty ISO-Monday weekly/monthly buckets, YTD, anchored calendar
+  comparisons, count distribution, paired weighted easy pace, and load metrics.
+  `loadSeries` supplies daily acute/chronic coverage, weekly-equivalent chronic
+  load, ACWR, band/reason and monotony using the exact end-snapshot calculation
+  anchored to each date. Query lookback starts no later than `from - 27 days`;
+  the frontend need not duplicate load formulas.
+  `GET /api/insights/races?to=…&pageSize=25&cursor=…` uses bounded keyset
+  pagination (1–100) ordered descending UTC start/ID, including races without
+  details. Protected cursors are bound to owner and `to`; they are not snapshots.
+  Both APIs return `no-store` and exclude notes/location/comments/GPX.
+- Training and race count toward running distance. Cross-training contributes
+  activity time/elevation/load only; rest/injury contributes zero. Each period's
+  totals expose completed `restSessionCount` separately from active `sessionCount`,
+  without adding rest entries to metric coverage or distribution shares. Load is
+  seconds × RPE / 60 with fractional minutes. Known subtotals, eligible/provided/
+  missing counts and completeness distinguish zero, gaps and missing sessions.
+- ACWR = inclusive A7/(C28/4), coupled windows. Any missing load in 28 days
+  suppresses the ratio; zero chronic gives a reasoned null. Bands are <0.8 low,
+  [0.8,1.3] optimal, >1.3 high, suppressed until 28 inclusive calendar dates since
+  first completed activity. Monotony uses seven daily loads and population SD:
+  missing, all-zero, and equal-positive cases have distinct null reasons.
+- Comparisons use current week/month elapsed dates through `to` versus prior
+  elapsed dates (clipped); complete periods compare to the whole prior period.
+  Zero baseline or incomplete coverage gives a reasoned null percentage.
+  YTD starts January 1; distribution uses non-rest session-count shares.
+  Exactly `easy-run` positive duration/distance pairs supply weighted seconds/km.
+- Typed OpenAPI response DTOs include precise nullable values and reason/band
+  enums. The checked-in TypeScript contract is generated from this API document.
+- Unit/API tests and offline SQL Server translation tests pass. Translation
+  checks do not execute SQL or validate live query plans/concurrency; InMemory
+  pagination tests do not establish native SQL GUID ordering. Replica-stable
+  race cursors require a shared durable Data Protection key ring in production;
+  this change does not provision one.
+
+See [ADR 0005](adr/0005-deterministic-insights-and-owner-scoped-api.md) for exact
+metric semantics and trade-offs.
+
+## M5.3 — Insights dashboard
+
+Status: implemented and locally verified; live Entra and SQL execution remain
+environment-dependent.
+
+- Protected `/insights` provides bookmarkable UTC period and bucket controls,
+  API-backed totals, comparisons, volume and pace charts, activity distribution,
+  and paginated race history. Sign-in preserves valid Insights query parameters.
+- Load trends use the API's per-date `loadSeries`: acute and weekly-equivalent
+  chronic load share a chart with distinguishable lines; ACWR and monotony each
+  have separate charts. Incomplete values remain gaps, with accessible tables
+  showing the server's values, coverage and unavailable reasons.
+- Race history links to its UTC diary date and opens that day's existing run
+  panel. The page and Recharts are lazy-loaded; run mutations invalidate cached
+  insights. No AI, migrations, or cloud resources are added.
+- Frontend tests, typecheck, lint and production build pass. Vite reports the
+  existing large app and Maps chunks; the Insights chart bundle remains lazy.
+
 ## M1 — skeleton
 
 Status: implemented.

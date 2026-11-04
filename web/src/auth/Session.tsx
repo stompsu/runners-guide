@@ -83,5 +83,5 @@ export function useSession() {
 export function Protected({ children }: { children: ReactNode }) {
   const { session } = useSession()
   const location = useLocation()
-  return session ? children : <Navigate to="/sign-in" state={{ from: location.pathname }} replace />
+  return session ? children : <Navigate to="/sign-in" state={{ from: location.pathname + location.search }} replace />
 }

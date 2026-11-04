@@ -28,6 +28,9 @@ function Month({ year, month, navigate }: {
   const location = useLocation()
   const focusDate = location.state?.focusDate as string | undefined
   const focusControl = location.state?.focusControl as string | undefined
+  const openDate = location.state?.openDate as string | undefined
+  // Deep link from Insights: open once this month's owner-scoped runs are loaded; closing clears it.
+  const [pendingOpen, setPendingOpen] = useState(openDate && days.some(day => dateKey(day) === openDate) ? openDate : null)
   const [focused, setFocused] = useState(focusDate && days.some(day => dateKey(day) === focusDate)
     ? focusDate : today().startsWith(firstKey.slice(0, 7)) ? today() : firstKey)
   const [panel, setPanel] = useState<{ date?: string; add?: boolean } | null>(null)
@@ -72,9 +75,10 @@ function Month({ year, month, navigate }: {
       grid.current?.querySelector<HTMLButtonElement>(`[data-date="${key}"]`)?.focus()
     }
   }
-  const shownRuns = panel?.date ? runs.filter(run => run.startAtUtc.slice(0, 10) === panel.date)
-    : runs.filter(run => run.startAtUtc.slice(0, 7) === firstKey.slice(0, 7))
   const ready = query.isSuccess && !query.isFetching
+  const activePanel = panel ?? (ready && pendingOpen ? { date: pendingOpen } : null)
+  const shownRuns = activePanel?.date ? runs.filter(run => run.startAtUtc.slice(0, 10) === activePanel.date)
+    : runs.filter(run => run.startAtUtc.slice(0, 7) === firstKey.slice(0, 7))
   return <main className="diary">
     <p className="eyebrow">{en.calendar.eyebrow}</p>
     <div className="month-heading">
@@ -150,8 +154,8 @@ function Month({ year, month, navigate }: {
       </table>
     </div>
     <p className="muted">{en.calendar.totalsHelp}</p>
-    {panel && <RunPanel runs={shownRuns} date={panel.date ?? firstKey}
-      label={panel.date ? dateLabel(utcDate(panel.date)) : monthLabel(first)}
-      initialAdd={panel.add} onClose={() => setPanel(null)} onChanged={() => setAnnouncement(en.calendar.updated)} />}
+    {activePanel && <RunPanel runs={shownRuns} date={activePanel.date ?? firstKey}
+      label={activePanel.date ? dateLabel(utcDate(activePanel.date)) : monthLabel(first)}
+      initialAdd={'add' in activePanel ? activePanel.add : undefined} onClose={() => { setPanel(null); setPendingOpen(null) }} onChanged={() => setAnnouncement(en.calendar.updated)} />}
   </main>
 }
