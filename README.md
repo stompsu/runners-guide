@@ -59,6 +59,27 @@ The guest bootstrap endpoint is `POST /api/auth/guest`; it is intentionally the 
 
 When hosting behind a reverse proxy, configure `Networking:ForwardedHeaders:KnownProxies` and/or `Networking:ForwardedHeaders:KnownNetworks` with only the trusted proxy addresses or CIDRs, and set `Networking:ForwardedHeaders:ForwardLimit` to the number of trusted forwarding hops. Forwarded headers from untrusted sources are ignored; do not trust arbitrary `X-Forwarded-For` values.
 
+### Maps and GPX (M4)
+
+- Configure the API's `Azure:Maps:ClientId` with the **existing Maps account client
+  ID**, not a subscription key. `DefaultAzureCredential`'s local identity needs the
+  existing **Azure Maps Data Reader** role on that account. No Maps credential or
+  configuration is required in Vite. See [local setup and limitations](docs/architecture.md#m4--maps-and-gpx)
+  and [ADR 0004](docs/adr/0004-maps-gpx-private-imports.md).
+- Save a run, then edit it or open details to upload/replace a GPX (20 MiB maximum).
+  Choose planned course or recorded track. The map shows start/finish and the
+  elevation profile; the original is downloadable only through the authenticated
+  API. Guests can hold ten active tracks including seeded demo tracks.
+- Upload never changes run fields. For completed recorded tracks, explicitly
+  **Apply suggested metrics and start location**, review, then **Save run**. Planned
+  courses never offer autofill. Track deletion leaves run metrics untouched.
+- The additive M4 migration is checked in but must be reviewed/applied separately
+  against an isolated database. Startup does not create containers or apply schema
+  changes. GPX storage must already be private with data read/write/delete access.
+- The fictional `seed/demo/synthetic-silesia.gpx` is embedded for configured demo
+  seeding. Live Maps/RBAC, SQL concurrency, and storage integration checks require
+  a separately authorized isolated environment; offline tests do not contact Azure.
+
 ## Build and test
 
 ```powershell

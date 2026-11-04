@@ -50,6 +50,10 @@ public sealed class HealthEndpointTests
         Assert.Equal("http", root.GetProperty("components").GetProperty("securitySchemes")
             .GetProperty("Bearer").GetProperty("type").GetString());
         Assert.Equal("Bearer", runList.GetProperty("security")[0].EnumerateObject().First().Name);
+        Assert.Equal("Bearer", root.GetProperty("paths").GetProperty("/api/maps/token")
+            .GetProperty("get").GetProperty("security")[0].EnumerateObject().First().Name);
+        Assert.Equal("Bearer", root.GetProperty("paths").GetProperty("/api/runs/{id}/track")
+            .GetProperty("post").GetProperty("security")[0].EnumerateObject().First().Name);
         Assert.False(guestBootstrap.TryGetProperty("security", out _));
     }
 

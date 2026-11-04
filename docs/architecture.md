@@ -41,3 +41,79 @@ Status: implemented; live Entra/API verification requires the configured develop
 - Radix Dialog plus existing CSS is the lightweight component alternative to shadcn/Tailwind. Panels trap focus, restore the opener, and close with Escape. The grid has row/column semantics, roving day focus, arrow/Home/End/Page navigation, and a horizontally scrollable narrow-screen layout.
 - React Hook Form/Zod validate add/edit forms and map metric display units into generated SI inputs. Race metadata is editable; existing location coordinates are preserved without adding map/geocoding controls. Ratings/comments are submitted only for completed runs.
 - English strings and Intl formatting are organized under `web/src/i18n.ts`; maps, GPX, and insights remain out of scope.
+
+## M4 — Maps and GPX
+
+Status: implemented locally; live Maps/RBAC and isolated SQL concurrency checks
+remain environment-dependent. The additive `TrackProcessedArtifact` and
+`GuestUploadQuotaAndPendingTrackDeletion` migrations are generated, **not applied**.
+No resources are provisioned or changed by startup.
+
+- Azure Maps Web SDK **v3** stays behind `web/src/maps/MapView.tsx`; start/finish
+  markers, segmented GeoJSON track display, map pin selection, and a labelled SVG
+  elevation profile share generated OpenAPI contracts. Location search returns
+  provider-neutral names and WGS84 coordinates through the existing typed client.
+- Authenticated `/api/maps/token` obtains short-lived Entra OAuth tokens server-side
+  using `DefaultAzureCredential` and scope `https://atlas.microsoft.com/.default`.
+  The SDK's `anonymous`/`getToken` callback consumes that token and the Maps account
+  client ID. This is compatible with guest and Entra app sessions. No browser
+  subscription keys, SAS links, tile proxy, or token persistence/logging.
+- Raw GPX uploads go to `/api/runs/{id}/track?planned=…`, limited to 20 MiB at the
+  request and stream boundaries. Pure domain parsing prohibits DTDs/external
+  entities, bounds points/characters and simplification CPU, and validates all
+  numeric inputs. Haversine distance, 3 m accepted-anchor elevation noise
+  filtering, and all-point nondecreasing timestamp duration are deterministic.
+- One active track per run; raw original and processed GeoJSON are separate
+  random-named blobs in the existing private container. Owner-only processed and
+  original retrieval goes through the API (`no-store`); no blob URLs are returned.
+  SQL serializable transactions with per-user update locks protect replacements,
+  deletion, and a persisted guest lifetime limit of ten accepted upload requests
+  across API replicas. Replacements consume a request; demo seeding does not;
+  deletion never refunds requests. The counter is reloaded under the lock and
+  saved transactionally with metadata, not computed from active rows.
+- Replacement keeps old artifacts/metadata until new writes and DB commit succeed.
+  Failed writes/commits best-effort clean new blobs; successful replacement
+  best-effort cleans old blobs. Deletion (including run/guest cleanup) first commits
+  a durable `IsPendingDeletion` marker; run deletion also sets `DeleteParentRun`.
+  Pending tracks are hidden from GET/original and cannot be replaced. A separate
+  per-user locked transaction removes blobs before final metadata/run deletion.
+  Both storage failures and final DB-save failures retain recoverable pending
+  rows. Repeated API deletes resume intent; the existing hourly cleanup worker
+  retries pending tracks for all users, preserving the parent-run flag and
+  rechecking candidates under lock to avoid deleting a later upload.
+- Import only returns a preview. Completed recorded tracks offer explicit
+  suggestions in the editor; the user must apply and then save using the existing
+  typed run update. Planned course imports never offer autofill. Missing duration
+  does not erase manual duration. Synthetic demo GPX copies are seeded for races
+  when Blob Storage is configured.
+
+### Local Maps setup (no provisioning)
+
+Set the **existing Maps account's client ID** (not the SPA app ID or subscription
+key) in API user secrets as `Azure:Maps:ClientId`. The identity selected locally by
+`DefaultAzureCredential` needs **Azure Maps Data Reader** scoped to that account;
+the hosted API identity needs the same existing assignment. Identity and Maps
+account tenant must align. An authorized operator must arrange any missing RBAC
+assignment separately; application startup does not create it. The Blob identity
+also needs existing container data read/write/delete permissions; the container
+must already be private. No Maps secret belongs in `web/.env*`.
+
+The SDK calls Maps directly from the browser using the issued bearer token and
+account client ID. Verify existing account origin/CORS settings for the intended
+frontend origin with an authorized operator if direct requests are rejected; do
+not add a subscription-key fallback. Use only a local or isolated development
+database/storage for manual uploads after explicit migration review/application.
+
+### Verification and limitations
+
+Offline tests cover parser edge cases, storage/DB failure compensation, partial
+deletion and expired-guest retry, first/final deletion-save failures and API/worker
+recovery, owner boundaries, lifetime guest upload-request limits, explicit
+UI import/autofill, and fake OAuth/geocoding. They do not prove live tiles,
+cross-tenant/RBAC setup, or SQL lock behavior. Post-commit/compensating cleanup
+failure can leave unreferenced private blobs requiring operational reconciliation.
+The process-local Maps request limiter is not a distributed quota. Large but
+valid GPX metrics can exceed run-editor limits; explicit saves retain validation.
+
+See [ADR 0004](adr/0004-maps-gpx-private-imports.md) for routes, GeoJSON shape,
+processing rules, lifecycle ordering, and tradeoffs.

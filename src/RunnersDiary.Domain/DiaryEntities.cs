@@ -6,6 +6,7 @@ public sealed class DiaryUser
 {
     public required string Id { get; set; }
     public bool IsGuest { get; set; }
+    public int GpxUploadRequestCount { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset? ExpiresAtUtc { get; set; }
     public string? DisplayName { get; set; }
@@ -79,7 +80,10 @@ public sealed class GpxTrack
 {
     public Guid RunId { get; set; }
     public required string BlobName { get; set; }
+    public string? ProcessedBlobName { get; set; }
     public DateTimeOffset UploadedAtUtc { get; set; }
     public bool IsPlannedCourse { get; set; }
     public long FileSizeBytes { get; set; }
+    public bool IsPendingDeletion { get; set; }
+    public bool DeleteParentRun { get; set; }
 }

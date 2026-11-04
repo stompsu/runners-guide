@@ -178,6 +178,7 @@ public static class RunEndpoints
         ClaimsPrincipal principal,
         DiaryDbContext db,
         TimeProvider timeProvider,
+        TrackDeletionService deletion,
         CancellationToken cancellationToken)
     {
         var user = await GetCurrentUserAsync(principal, db, timeProvider, cancellationToken);
@@ -186,20 +187,11 @@ public static class RunEndpoints
             return Results.Unauthorized();
         }
 
-        var run = await db.Runs.SingleOrDefaultAsync(
-            item => item.Id == id && item.UserId == user.Id,
-            cancellationToken);
-        if (run is null)
-        {
-            return Results.NotFound();
-        }
-
-        db.Runs.Remove(run);
-        await db.SaveChangesAsync(cancellationToken);
-        return Results.NoContent();
+        return await deletion.DeleteAsync(id, user.Id, true, cancellationToken)
+            ? Results.NoContent() : Results.NotFound();
     }
 
-    private static async Task<DiaryUser?> GetCurrentUserAsync(
+    internal static async Task<DiaryUser?> GetCurrentUserAsync(
         ClaimsPrincipal principal,
         DiaryDbContext db,
         TimeProvider timeProvider,

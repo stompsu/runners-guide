@@ -44,6 +44,11 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     }
 });
 builder.Services.AddSingleton<DefaultAzureCredential>();
+builder.Services.AddHttpClient("maps", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.MaxResponseContentBufferSize = 1024 * 1024;
+});
 var guestTokenSettings = GuestTokenSettings.Load(builder.Configuration, builder.Environment);
 if (!builder.Environment.IsDevelopment()
     && (string.IsNullOrWhiteSpace(builder.Configuration["Auth:Entra:Authority"])
@@ -60,6 +65,9 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("maps", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirst("sub")?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.AddPolicy("guest-bootstrap", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -79,8 +87,8 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseForwardedHeaders();
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
@@ -96,6 +104,8 @@ if (app.Environment.IsDevelopment())
 
 app.MapGuestEndpoints();
 app.MapRunEndpoints();
+app.MapTrackEndpoints();
+app.MapMapEndpoints();
 app.MapFallback("{*path}", () => Results.NotFound()).AllowAnonymous();
 app.Run();
 

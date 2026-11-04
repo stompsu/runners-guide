@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\..\seed\demo\demo-runs.json" LogicalName="RunnersDiary.Infrastructure.Demo.demo-runs.json" />
+    <EmbeddedResource Include="..\..\seed\demo\synthetic-silesia.gpx" LogicalName="RunnersDiary.Infrastructure.Demo.synthetic-silesia.gpx" />
   </ItemGroup>
 
   <PropertyGroup>

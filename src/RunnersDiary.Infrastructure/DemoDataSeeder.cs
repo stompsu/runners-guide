@@ -2,10 +2,12 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RunnersDiary.Domain;
+using Azure.Storage.Blobs;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace RunnersDiary.Infrastructure;
 
-public sealed class DemoDataSeeder(DiaryDbContext db, TimeProvider timeProvider)
+public sealed class DemoDataSeeder(DiaryDbContext db, TimeProvider timeProvider, IServiceProvider services)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -20,13 +22,56 @@ public sealed class DemoDataSeeder(DiaryDbContext db, TimeProvider timeProvider)
             ExpiresAtUtc = now.AddHours(24),
             DisplayName = "Demo runner"
         };
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(cancellationToken) : null;
         db.Users.Add(user);
 
         await SeedRunTypesAsync(cancellationToken);
         var template = await LoadTemplateAsync(cancellationToken);
         var runs = CreateRuns(user.Id, now, template);
         db.Runs.AddRange(runs);
-        await db.SaveChangesAsync(cancellationToken);
+        var artifacts = new List<string>();
+        ITrackStorage? storage = null;
+        try
+        {
+            // Offline tests/local shell do not require Azure; configured guest sessions include demo GPX.
+            if (services.GetService<BlobServiceClient>() is not null)
+            {
+                storage = services.GetRequiredService<ITrackStorage>();
+                foreach (var run in runs.Where(r => r.RaceDetails is not null).Take(6))
+                {
+                    await using var raw = Assembly.GetExecutingAssembly().GetManifestResourceStream(
+                        "RunnersDiary.Infrastructure.Demo.synthetic-silesia.gpx")!;
+                    var processed = GpxParser.Parse(raw, run.Status == RunStatus.Planned);
+                    raw.Position = 0;
+                    var key = Guid.NewGuid().ToString("N");
+                    var original = $"{key}/original.gpx"; var geojson = $"{key}/track.json";
+                    artifacts.Add(original);
+                    await storage.WriteAsync(original, raw, "application/gpx+xml", cancellationToken);
+                    artifacts.Add(geojson);
+                    using var json = new MemoryStream(JsonSerializer.SerializeToUtf8Bytes(processed, JsonOptions));
+                    await storage.WriteAsync(geojson, json, "application/geo+json", cancellationToken);
+                    run.GpxTrack = new GpxTrack
+                    {
+                        RunId = run.Id, BlobName = original, ProcessedBlobName = geojson,
+                        UploadedAtUtc = now, FileSizeBytes = raw.Length, IsPlannedCourse = processed.IsPlannedCourse
+                    };
+                }
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            if (storage is not null)
+                foreach (var artifact in artifacts)
+                {
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    try { await storage.DeleteAsync(artifact, timeout.Token); }
+                    catch { /* Preserve original failure; orphan cleanup may be required. */ }
+                }
+            throw;
+        }
         return user;
     }
 

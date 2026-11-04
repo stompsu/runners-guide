@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import openapiTS, { astToString } from 'openapi-typescript'
+import ts from 'typescript'
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(scriptDirectory, '../..')
@@ -72,7 +73,13 @@ try {
     })
   }
 
-  const ast = await openapiTS(document)
+  const ast = await openapiTS(document, {
+    // Raw binary request bodies are browser Blobs, not JSON strings.
+    transform(schema) {
+      if (schema.type === 'string' && schema.format === 'binary')
+        return ts.factory.createTypeReferenceNode('Blob')
+    },
+  })
   await mkdir(dirname(outputFile), { recursive: true })
   await writeFile(outputFile, astToString(ast), 'utf8')
   console.log(`Generated ${outputFile}`)

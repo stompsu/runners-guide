@@ -39,6 +39,9 @@ namespace RunnersDiary.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("ExpiresAtUtc")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<int>("GpxUploadRequestCount")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsGuest")
                         .HasColumnType("bit");
 
@@ -59,11 +62,21 @@ namespace RunnersDiary.Infrastructure.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("nvarchar(1024)");
 
+                    b.Property<bool>("DeleteParentRun")
+                        .HasColumnType("bit");
+
                     b.Property<long>("FileSizeBytes")
                         .HasColumnType("bigint");
 
+                    b.Property<bool>("IsPendingDeletion")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsPlannedCourse")
                         .HasColumnType("bit");
+
+                    b.Property<string>("ProcessedBlobName")
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
 
                     b.Property<DateTimeOffset>("UploadedAtUtc")
                         .HasColumnType("datetimeoffset");
