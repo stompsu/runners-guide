@@ -12,6 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddProblemDetails();
+// Missing required Minimal API parameters must return 400, including in Development,
+// rather than throwing into the generic exception handler and becoming 500.
+builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = false);
+builder.Services.AddDataProtection();
 builder.Services.AddOpenApi(options =>
     options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -104,6 +108,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapGuestEndpoints();
 app.MapRunEndpoints();
+app.MapInsightsEndpoints();
 app.MapTrackEndpoints();
 app.MapMapEndpoints();
 app.MapFallback("{*path}", () => Results.NotFound()).AllowAnonymous();

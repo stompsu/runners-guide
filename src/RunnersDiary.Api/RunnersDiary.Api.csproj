@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="RunnersDiary.Api.Tests" />
     <ProjectReference Include="..\RunnersDiary.ServiceDefaults\RunnersDiary.ServiceDefaults.csproj" />
     <ProjectReference Include="..\RunnersDiary.Infrastructure\RunnersDiary.Infrastructure.csproj" />
     <ProjectReference Include="..\RunnersDiary.Domain\RunnersDiary.Domain.csproj" />

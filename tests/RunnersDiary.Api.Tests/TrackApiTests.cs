@@ -39,12 +39,20 @@ public sealed class FailingSaveInterceptor : SaveChangesInterceptor
 {
     public bool Fail { get; set; }
     public int? FailOnSave { get; set; }
+    public Action? BeforeFail { get; set; }
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
         InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
         if (FailOnSave is not null) FailOnSave--;
-        return Fail || FailOnSave == 0
-            ? throw new DbUpdateException("Synthetic DB failure.") : ValueTask.FromResult(result);
+        if (Fail || FailOnSave == 0)
+        {
+            var beforeFail = BeforeFail;
+            BeforeFail = null;
+            beforeFail?.Invoke();
+            throw new DbUpdateException("Synthetic DB failure.");
+        }
+
+        return ValueTask.FromResult(result);
     }
 }
 

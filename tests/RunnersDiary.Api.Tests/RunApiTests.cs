@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
@@ -149,6 +150,52 @@ public sealed class RunApiTests
         Assert.Equal(HttpStatusCode.TooManyRequests, limitedResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task Concurrent_identity_registration_uses_the_user_inserted_by_the_winning_request()
+    {
+        using var factory = new DiaryApiFactory();
+        factory.Saves.Fail = true;
+        factory.Saves.BeforeFail = () =>
+        {
+            var options = new DbContextOptionsBuilder<DiaryDbContext>()
+                .UseInMemoryDatabase(factory.DatabaseName).Options;
+            using var competingDb = new DiaryDbContext(options);
+            competingDb.Users.Add(new DiaryUser
+            {
+                Id = "entra-user",
+                IsGuest = false,
+                CreatedAtUtc = DateTimeOffset.UtcNow,
+                DisplayName = "Registered by the other request"
+            });
+            competingDb.SaveChanges();
+        };
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<DiaryDbContext>();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", "entra-user"), new Claim("name", "First request")], "test"));
+
+        var user = await RunEndpoints.GetCurrentUserAsync(
+            principal, db, DateTimeOffset.UtcNow, CancellationToken.None);
+
+        Assert.NotNull(user);
+        Assert.Equal("entra-user", user.Id);
+        Assert.Equal("Registered by the other request", user.DisplayName);
+    }
+
+    [Fact]
+    public async Task Identity_registration_rethrows_write_failures_without_a_competing_user()
+    {
+        using var factory = new DiaryApiFactory();
+        factory.Saves.Fail = true;
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<DiaryDbContext>();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", "entra-user")], "test"));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => RunEndpoints.GetCurrentUserAsync(
+            principal, db, DateTimeOffset.UtcNow, CancellationToken.None));
+    }
+
     private static async Task<GuestSessionResponse> CreateGuestAsync(HttpClient client)
     {
         using var response = await client.PostAsync("/api/auth/guest", content: null);
@@ -159,6 +206,7 @@ public sealed class RunApiTests
     internal sealed class DiaryApiFactory : WebApplicationFactory<Program>
     {
         private readonly string _databaseName = Guid.NewGuid().ToString("N");
+        public string DatabaseName => _databaseName;
         public MemoryTrackStorage Storage { get; } = new();
         public FailingSaveInterceptor Saves { get; } = new();
 

@@ -195,6 +195,13 @@ public static class RunEndpoints
         ClaimsPrincipal principal,
         DiaryDbContext db,
         TimeProvider timeProvider,
+        CancellationToken cancellationToken) =>
+        await GetCurrentUserAsync(principal, db, timeProvider.GetUtcNow(), cancellationToken);
+
+    internal static async Task<DiaryUser?> GetCurrentUserAsync(
+        ClaimsPrincipal principal,
+        DiaryDbContext db,
+        DateTimeOffset now,
         CancellationToken cancellationToken)
     {
         var id = principal.FindFirstValue("sub");
@@ -207,7 +214,7 @@ public static class RunEndpoints
         if (principal.IsInRole("guest"))
         {
             return user is { IsGuest: true, ExpiresAtUtc: not null }
-                && user.ExpiresAtUtc > timeProvider.GetUtcNow()
+                && user.ExpiresAtUtc > now
                 ? user
                 : null;
         }
@@ -227,12 +234,27 @@ public static class RunEndpoints
         {
             Id = id,
             IsGuest = false,
-            CreatedAtUtc = timeProvider.GetUtcNow(),
+            CreatedAtUtc = now,
             DisplayName = displayName
         };
         db.Users.Add(user);
-        await db.SaveChangesAsync(cancellationToken);
-        return user;
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return user;
+        }
+        catch (DbUpdateException)
+        {
+            db.Entry(user).State = EntityState.Detached;
+            var registered = await db.Users.AsNoTracking()
+                .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+            if (registered is null)
+            {
+                throw;
+            }
+
+            return registered.IsGuest ? null : registered;
+        }
     }
 
     private static Run CreateRun(RunInput input, string userId) => new()

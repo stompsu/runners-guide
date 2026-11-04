@@ -31,6 +31,9 @@ export function useRunMutation() {
         : await apiClient.DELETE('/api/runs/{id}', { params: { path: { id: id! } } })
       if (!result.response.ok) throw failure(result.response, result.error)
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: ['runs'] }),
+    onSuccess: () => Promise.all([
+      client.invalidateQueries({ queryKey: ['runs'] }),
+      client.invalidateQueries({ queryKey: ['insights'] }),
+    ]),
   })
 }

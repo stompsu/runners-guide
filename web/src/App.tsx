@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { lazy, Suspense, useState } from 'react'
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useMsal } from '@azure/msal-react'
 import type { AuthenticationResult, IPublicClientApplication } from '@azure/msal-browser'
 import { SessionProvider, Protected, useSession } from './auth/Session'
@@ -7,7 +7,10 @@ import { apiScope, entraClient } from './auth/entra'
 import { DiaryPage } from './diary/DiaryPage'
 import { monthPath } from './diary/calendar'
 import { en } from './i18n'
+import { safeReturnPath } from './auth/returnPath'
 import './App.css'
+
+const InsightsPage = lazy(() => import('./insights/InsightsPage'))
 
 function EntraSignInButton({ pending, onPendingChange, onBegin, onSuccess, onFailure }: {
   pending: boolean
@@ -36,8 +39,7 @@ function SignInPage() {
   const [error, setError] = useState('')
   const [currentMonth] = useState(() => monthPath(new Date()))
   const from = location.state?.from
-  const destination = typeof from === 'string' && /^\/diary\/\d{4}\/\d{2}$/.test(from)
-    ? from : currentMonth
+  const destination = safeReturnPath(from, currentMonth)
   if (auth.session) return <Navigate to={destination} replace />
   async function signInAsGuest() {
     setPending(true)
@@ -74,6 +76,7 @@ function Shell() {
         <span aria-hidden="true" className="brand-mark">R</span><span>{en.auth.brand}</span>
       </Link>
       <nav aria-label={en.auth.navigation}>
+        {session && <><NavLink to="/diary">{en.insights.diary}</NavLink><NavLink to="/insights">{en.insights.heading}</NavLink></>}
         {session ? <button onClick={signOut}>{en.auth.signOut}</button> : <Link to="/sign-in">{en.signIn}</Link>}
       </nav>
     </header>
@@ -85,6 +88,7 @@ function Shell() {
       <Route path="/sign-in" element={<SignInPage />} />
       <Route path="/diary" element={<Protected><Navigate to={currentMonth} replace /></Protected>} />
       <Route path="/diary/:year/:month" element={<Protected><DiaryPage /></Protected>} />
+      <Route path="/insights" element={<Protected><Suspense fallback={<p role="status">{en.insights.loading}</p>}><InsightsPage /></Suspense></Protected>} />
       <Route path="*" element={<main className="page-content"><h1>{en.auth.notFound}</h1><Link to="/">{en.auth.back}</Link></main>} />
     </Routes>
     <footer className="site-footer">{en.auth.footer}</footer>
