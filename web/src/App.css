@@ -1,0 +1,119 @@
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: 0 clamp(1.25rem, 5vw, 4.5rem);
+}
+
+.site-header {
+  align-items: center;
+  border-bottom: 1px solid #e5e9e3;
+  display: flex;
+  justify-content: space-between;
+  min-height: 5.5rem;
+}
+
+.brand {
+  align-items: center;
+  color: #173c2c;
+  display: inline-flex;
+  font-size: 1.125rem;
+  font-weight: 700;
+  gap: 0.7rem;
+  text-decoration: none;
+}
+
+.brand-mark {
+  align-items: center;
+  background: #d7eddd;
+  border-radius: 0.75rem;
+  color: #185936;
+  display: inline-flex;
+  height: 2.25rem;
+  justify-content: center;
+  width: 2.25rem;
+}
+
+.site-header nav a,
+.secondary-link {
+  color: #285d42;
+  font-weight: 600;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.page-content {
+  align-content: center;
+  flex: 1;
+  margin: 0 auto;
+  max-width: 48rem;
+  padding: 5rem 0 6rem;
+  width: 100%;
+}
+
+.eyebrow {
+  color: #397853;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  margin: 0 0 1rem;
+  text-transform: uppercase;
+}
+
+h1 {
+  color: #173c2c;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+  margin: 0;
+  max-width: 13ch;
+}
+
+.intro {
+  color: #52635a;
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  line-height: 1.7;
+  margin: 1.5rem 0 2rem;
+  max-width: 38rem;
+}
+
+.primary-link {
+  background: #236343;
+  border-radius: 999px;
+  color: white;
+  display: inline-flex;
+  font-weight: 600;
+  padding: 0.8rem 1.5rem;
+  text-decoration: none;
+}
+
+.primary-link:hover {
+  background: #174b31;
+}
+
+.milestone-note {
+  color: #728078;
+  font-size: 0.9rem;
+  margin-top: 2.5rem;
+}
+
+.site-footer {
+  border-top: 1px solid #e5e9e3;
+  color: #728078;
+  font-size: 0.875rem;
+  padding: 1.5rem 0;
+}
+
+a:focus-visible {
+  border-radius: 0.25rem;
+  outline: 3px solid #e4a344;
+  outline-offset: 4px;
+}
