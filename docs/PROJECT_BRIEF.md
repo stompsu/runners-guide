@@ -77,7 +77,7 @@ Code conventions: C# for all backend code and examples; nullable reference types
 
 ## 3. Phase 0 — Agents & project memory (do this first)
 
-Create Claude Code subagents in `.claude/agents/` (one Markdown file each, with YAML frontmatter: `name`, `description`, `tools`, and `model` where it makes sense). Descriptions must say clearly **when** to delegate to the agent. Restrict tools to what each agent needs.
+Create GitHub Copilot subagents in `.github/agents/` (one Markdown file each, with YAML frontmatter: `name`, `description`, `tools`, and `model` where it makes sense). Descriptions must say clearly **when** to delegate to the agent. Restrict tools to what each agent needs.
 
 Proposed agents (adjust if you see gaps or overlap, and explain why):
 
@@ -91,7 +91,7 @@ Proposed agents (adjust if you see gaps or overlap, and explain why):
 8. **reviewer** — Read-only code & security review after each milestone: correctness, OWASP issues (file upload, XML parsing, authZ on every endpoint — users and guests can only access their own runs, guest token abuse, guest rate limits), secrets, cost risks, consistency with ADRs.
 
 Also in Phase 0:
-- Create `CLAUDE.md` at the repo root: project summary, repo layout, build/test/run commands, conventions, the "how we work" rules from section 5, and which agent to use for what.
+- Create `.github/copilot-instructions.md` at the repo root: project summary, repo layout, build/test/run commands, conventions, the "how we work" rules from section 5, and which agent to use for what.
 - Propose the repo structure (e.g. `src/RunnersDiary.Api`, `src/RunnersDiary.Domain`, `src/RunnersDiary.Infrastructure`, `src/RunnersDiary.AppHost`, `src/RunnersDiary.ServiceDefaults`, `web/`, `infra/`, `tests/`, `docs/`).
 - **Stop** and show me: the agent list with one-line purpose each, the repo structure, and any questions.
 
@@ -115,6 +115,6 @@ Before each milestone, have **architect** produce a short plan (files to touch, 
 - No secrets, keys or connection strings in code or config files committed to git.
 - Don't add dependencies without a one-line justification; prefer well-maintained ones.
 - Check current docs (WebSearch/WebFetch) for Azure Maps, Microsoft Foundry, Microsoft Agent Framework and Aspire APIs instead of relying on memory — these change often.
-- Keep `CLAUDE.md` and `docs/` up to date as decisions change.
+- Keep `.github/copilot-instructions.md` and `docs/` up to date as decisions change.
 
 **Start now with Phase 0.**
